@@ -54,12 +54,12 @@ func checkFile() {
 	}
 }
 
-func saveTodoList(todos []Todo) {
+func saveTodoList(todos []Todo) error {
 	writeBytes, err := json.Marshal(todos)
 	if err != nil {
-		log.Fatal("There was a problem:", err)
+		return err
 	}
-	os.WriteFile(fileName, writeBytes, 0666)
+	return os.WriteFile(fileName, writeBytes, 0666)
 }
 
 func getAllTodos() []Todo {
