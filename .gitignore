@@ -1,0 +1,25 @@
+# Binaries
+todo
+todo.exe
+todo-mac
+todo-linux
+main
+
+# OS files
+.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+
+# Dependency directories
+vendor/
+
+# Output files
+*.out
+
+# Data files
+todos.json
+
+# Test cache
+*.test

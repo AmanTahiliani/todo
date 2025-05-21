@@ -18,88 +18,60 @@ type Todo struct {
 }
 
 func printTodo(todo Todo) {
-	fmt.Println("- ID: ", todo.Id)
-	fmt.Println("- Title: ", todo.Title)
-	fmt.Println("- Description: ", todo.Description)
-	fmt.Println("- Completed: ", todo.Completed)
-	fmt.Println("--------")
+	fmt.Printf("- ID: %d\n- Title: %s\n- Description: %s\n- Completed: %v\n--------\n",
+		todo.Id, todo.Title, todo.Description, todo.Completed)
 }
 
-func listTodos() {
-	todos := getAllTodos()
+func listTodos(todos []Todo) {
 	fmt.Println("TODO: \n------")
 	for _, todo := range todos {
-		if todo.Completed {
-			continue
+		if !todo.Completed {
+			printTodo(todo)
 		}
-		printTodo(todo)
 	}
 	fmt.Println("\nCompleted: \n------")
 	for _, todo := range todos {
-		if !todo.Completed {
-			continue
-		}
-		printTodo(todo)
-	}
-
-}
-
-func checkFile() {
-	_, err := os.Stat(fileName)
-	if os.IsNotExist(err) {
-		_, err := os.Create(fileName)
-		if err != nil {
-			log.Fatal("\n Error creating file: ", err)
+		if todo.Completed {
+			printTodo(todo)
 		}
 	}
 }
 
-func saveTodoList(todos []Todo) error {
-	writeBytes, err := json.Marshal(todos)
+func ensureFile() error {
+	f, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(fileName, writeBytes, 0666)
+	return f.Close()
 }
 
-func getAllTodos() []Todo {
-	checkFile()
-	fileData, err := os.ReadFile(fileName)
+func loadTodos() ([]Todo, error) {
+	if err := ensureFile(); err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(fileName)
 	if err != nil {
-		saveTodoList([]Todo{})
+		return nil, err
 	}
-	todos := []Todo{}
-	if err := json.Unmarshal(fileData, &todos); err != nil {
-		saveTodoList([]Todo{})
+	if len(data) == 0 {
+		return []Todo{}, nil
 	}
-	return todos
+	var todos []Todo
+	if err := json.Unmarshal(data, &todos); err != nil {
+		return []Todo{}, nil // Reset on corrupt file
+	}
+	return todos, nil
 }
 
-func completeTodo(id int) {
-	todos := getAllTodos()
-	for i, todo := range todos {
-		if todo.Id == id {
-			todo.Completed = true
-			todos[i] = todo
-			break
-		}
+func saveTodos(todos []Todo) error {
+	data, err := json.MarshalIndent(todos, "", "  ")
+	if err != nil {
+		return err
 	}
-	saveTodoList(todos)
+	return os.WriteFile(fileName, data, 0666)
 }
 
-func removeTodo(id int) {
-	todos := getAllTodos()
-	for i, todo := range todos {
-		if todo.Id == id {
-			todos = append(todos[:i], todos[i+1:]...)
-			break
-		}
-	}
-	saveTodoList(todos)
-}
-
-func getNextId() int {
-	todos := getAllTodos()
+func getNextId(todos []Todo) int {
 	maxId := 0
 	for _, todo := range todos {
 		if todo.Id > maxId {
@@ -109,56 +81,103 @@ func getNextId() int {
 	return maxId + 1
 }
 
-func addTodo(todo Todo) {
-	todos := getAllTodos()
-	todo.Id = getNextId()
-	todo.Completed = false
-	todos = append(todos, todo)
-	writeBytes, err := json.Marshal(todos)
+func addTodo(title, description string) error {
+	todos, err := loadTodos()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	if err := os.WriteFile(fileName, writeBytes, 0666); err != nil {
-		log.Fatal("There was an error writing the todo to the file", err)
+	todo := Todo{
+		Id:          getNextId(todos),
+		Title:       title,
+		Description: description,
+		Completed:   false,
 	}
+	todos = append(todos, todo)
+	return saveTodos(todos)
+}
+
+func completeTodo(id int) error {
+	todos, err := loadTodos()
+	if err != nil {
+		return err
+	}
+	for i := range todos {
+		if todos[i].Id == id {
+			todos[i].Completed = true
+			break
+		}
+	}
+	return saveTodos(todos)
+}
+
+func removeTodo(id int) error {
+	todos, err := loadTodos()
+	if err != nil {
+		return err
+	}
+	for i, todo := range todos {
+		if todo.Id == id {
+			todos = append(todos[:i], todos[i+1:]...)
+			break
+		}
+	}
+	return saveTodos(todos)
 }
 
 var (
-	action      *string
-	title       *string
-	description *string
-	id          *int
+	action      = flag.String("action", "add", "action (add, remove, list, complete)")
+	title       = flag.String("title", "", "title of the todo")
+	description = flag.String("description", "", "description of the todo")
+	id          = flag.Int("id", 0, "ID of the todo to be actioned upon. Used for remove and complete")
 )
 
-func init() {
-	action = flag.String("action", "add", "action (add, remove, list, complete)")
-	title = flag.String("title", "", "title of the todo")
-	description = flag.String("description", "", "description of the todo")
-	id = flag.Int("id", 0, "ID of the todo to be actioned upon. Used for remove and complete")
-
-}
 func main() {
 	flag.Parse()
-
-	if *action == "add" {
-		if *title == "" || *description == "" {
-			log.Fatal("Title and Description must be provided for adding a new TODO")
-		}
-		addTodo(Todo{Title: *title, Description: *description})
-	} else if *action == "remove" {
-		if *id == 0 {
-			log.Fatal("ID must be provided for removing a TODO")
-		}
-		removeTodo(*id)
-	} else if *action == "complete" {
-		if *id == 0 {
-			log.Fatal("ID must be provided for marking a Todo as complete")
-		}
-		completeTodo(*id)
-	} else if *action == "list" {
-		listTodos()
-	} else {
+	switch *action {
+	case "add":
+		handleAdd()
+	case "remove":
+		handleRemove()
+	case "complete":
+		handleComplete()
+	case "list":
+		handleList()
+	default:
 		log.Fatal("Please input a valid action.")
 	}
+}
 
+func handleAdd() {
+	if *title == "" || *description == "" {
+		log.Fatal("Title and Description must be provided for adding a new TODO")
+	}
+	if err := addTodo(*title, *description); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func handleRemove() {
+	if *id == 0 {
+		log.Fatal("ID must be provided for removing a TODO")
+	}
+	if err := removeTodo(*id); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func handleComplete() {
+	if *id == 0 {
+		log.Fatal("ID must be provided for marking a Todo as complete")
+	}
+	if err := completeTodo(*id); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func handleList() {
+	todos, err := loadTodos()
+	if err != nil {
+		log.Fatal(err)
+	}
+	listTodos(todos)
 }
