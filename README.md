@@ -1,6 +1,6 @@
 # Go Todo CLI App
 
-A simple command-line Todo application written in Go. Todos are stored in a local JSON file.
+A simple command-line Todo application written in Go. Todos are stored in a SQLite database.
 
 ## Features
 
@@ -8,7 +8,12 @@ A simple command-line Todo application written in Go. Todos are stored in a loca
 - List all todos, grouped by incomplete and completed
 - Mark todos as completed
 - Remove todos by ID
-- Data is persisted in `todos.json`
+- Data is persisted in SQLite database
+
+## Dependencies
+
+- Go 1.x
+- github.com/mattn/go-sqlite3
 
 ## Usage
 
@@ -64,5 +69,4 @@ go build -o todo
 - Add edit and search features
 - Add unit tests
 - Improve error handling
-- Use a database instead of a JSON file for storage
-- Add binary release for different platforms and make it available through Homebrew, Winget and Apt.
+- Add binary release for different platforms and make it available through Homebrew, Winget and Apt

@@ -1,11 +1,12 @@
 package main
 
 import (
-	"encoding/json"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
-	"os"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var fileName = "todos.json"
@@ -37,91 +38,61 @@ func listTodos(todos []Todo) {
 	}
 }
 
-func ensureFile() error {
-	f, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0666)
-	if err != nil {
-		return err
-	}
-	return f.Close()
-}
-
-func loadTodos() ([]Todo, error) {
-	if err := ensureFile(); err != nil {
-		return nil, err
-	}
-	data, err := os.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-	if len(data) == 0 {
-		return []Todo{}, nil
-	}
+func loadTodos(db *sql.DB) ([]Todo, error) {
 	var todos []Todo
-	if err := json.Unmarshal(data, &todos); err != nil {
-		return []Todo{}, nil // Reset on corrupt file
+	rows, err := db.Query("SELECT id, title, description, completed FROM todos")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var todo Todo
+		err := rows.Scan(&todo.Id, &todo.Title, &todo.Description, &todo.Completed)
+		if err != nil {
+			return nil, err
+		}
+		todos = append(todos, todo)
 	}
 	return todos, nil
 }
 
-func saveTodos(todos []Todo) error {
-	data, err := json.MarshalIndent(todos, "", "  ")
+func getNextId(db *sql.DB) int {
+	var id int
+	err := db.QueryRow("SELECT MAX(id) FROM todos").Scan(&id)
 	if err != nil {
-		return err
+		return 0
 	}
-	return os.WriteFile(fileName, data, 0666)
+	return id + 1
 }
 
-func getNextId(todos []Todo) int {
-	maxId := 0
-	for _, todo := range todos {
-		if todo.Id > maxId {
-			maxId = todo.Id
-		}
-	}
-	return maxId + 1
-}
-
-func addTodo(title, description string) error {
-	todos, err := loadTodos()
-	if err != nil {
-		return err
-	}
+func addTodo(db *sql.DB, title, description string) error {
 	todo := Todo{
-		Id:          getNextId(todos),
+		Id:          getNextId(db),
 		Title:       title,
 		Description: description,
 		Completed:   false,
 	}
-	todos = append(todos, todo)
-	return saveTodos(todos)
-}
-
-func completeTodo(id int) error {
-	todos, err := loadTodos()
+	_, err := db.Exec("INSERT INTO todos (id, title, description, completed) VALUES (?, ?, ?, ?)", todo.Id, todo.Title, todo.Description, todo.Completed)
 	if err != nil {
 		return err
 	}
-	for i := range todos {
-		if todos[i].Id == id {
-			todos[i].Completed = true
-			break
-		}
-	}
-	return saveTodos(todos)
+	return nil
 }
 
-func removeTodo(id int) error {
-	todos, err := loadTodos()
+func completeTodo(db *sql.DB, id int) error {
+	_, err := db.Exec("UPDATE todos SET completed=true WHERE id=?", id)
 	if err != nil {
 		return err
 	}
-	for i, todo := range todos {
-		if todo.Id == id {
-			todos = append(todos[:i], todos[i+1:]...)
-			break
-		}
+	return nil
+}
+
+func removeTodo(db *sql.DB, id int) error {
+	_, err := db.Exec("DELETE FROM todos WHERE id=?", id)
+	if err != nil {
+		return err
 	}
-	return saveTodos(todos)
+	return nil
 }
 
 var (
@@ -132,50 +103,61 @@ var (
 )
 
 func main() {
+	db, err := sql.Open("sqlite3", "./todos.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	sqlStmt := `CREATE TABLE if not exists todos ( id INT not null primary key, title varchar not null, description text, completed boolean);`
+	_, err = db.Exec(sqlStmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	flag.Parse()
 	switch *action {
 	case "add":
-		handleAdd()
+		handleAdd(db)
 	case "remove":
-		handleRemove()
+		handleRemove(db)
 	case "complete":
-		handleComplete()
+		handleComplete(db)
 	case "list":
-		handleList()
+		handleList(db)
 	default:
 		log.Fatal("Please input a valid action.")
 	}
 }
 
-func handleAdd() {
+func handleAdd(db *sql.DB) {
 	if *title == "" || *description == "" {
 		log.Fatal("Title and Description must be provided for adding a new TODO")
 	}
-	if err := addTodo(*title, *description); err != nil {
+	if err := addTodo(db, *title, *description); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func handleRemove() {
+func handleRemove(db *sql.DB) {
 	if *id == 0 {
 		log.Fatal("ID must be provided for removing a TODO")
 	}
-	if err := removeTodo(*id); err != nil {
+	if err := removeTodo(db, *id); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func handleComplete() {
+func handleComplete(db *sql.DB) {
 	if *id == 0 {
 		log.Fatal("ID must be provided for marking a Todo as complete")
 	}
-	if err := completeTodo(*id); err != nil {
+	if err := completeTodo(db, *id); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func handleList() {
-	todos, err := loadTodos()
+func handleList(db *sql.DB) {
+	todos, err := loadTodos(db)
 	if err != nil {
 		log.Fatal(err)
 	}
