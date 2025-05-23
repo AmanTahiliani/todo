@@ -24,4 +24,5 @@ todos.json
 *.log
 
 # DB files
-*.db
+*.db# Added by goreleaser init:
+dist/
