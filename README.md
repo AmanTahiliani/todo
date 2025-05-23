@@ -1,6 +1,6 @@
-# Go Todo CLI App
+# Todo CLI
 
-A simple command-line Todo application written in Go. Todos are stored in a SQLite database.
+A powerful command-line todo application written in Go. Manage your tasks efficiently with a simple, intuitive interface. All data is automatically stored in a SQLite database in your home directory.
 
 ## Features
 
@@ -8,77 +8,87 @@ A simple command-line Todo application written in Go. Todos are stored in a SQLi
 - List all todos, grouped by incomplete and completed
 - Mark todos as completed
 - Remove todos by ID
-- Data is persisted in SQLite database
-- User-friendly command-line interface with action commands
+- Automatic SQLite database management
+- User-friendly command-line interface with intuitive commands
+- Data stored securely in user's home directory
 
-## Dependencies
+## Installation
 
-- Go 1.x
-- github.com/mattn/go-sqlite3
+### Using Go
+
+```bash
+go install github.com/AmanTahiliani/todo/cmd/todo@latest
+```
+
+### Using Make
+
+```bash
+git clone https://github.com/AmanTahiliani/todo.git
+cd todo
+make install
+```
+
+### Using Homebrew (macOS)
+
+```bash
+brew tap AmanTahiliani/todo
+brew install todo
+```
 
 ## Usage
 
-Build the app:
-
-```sh
-go build -o todo
+### Add a new todo
+```bash
+todo add -t "Meeting" -d "Team standup at 10AM"
 ```
 
-### Command Structure
-
-The app uses a command-based interface where the action comes first, followed by flags:
-
-```sh
-./todo [action] [flags]
+### List all todos
+```bash
+todo list
 ```
 
-Available actions:
-- `add` - Add a new todo item
-- `remove` - Remove a todo item
-- `complete` - Mark a todo item as completed
-- `list` - List all todo items
-
-### Flags
-
-- `-t, --title` - Title for the todo (required for add)
-- `-d, --description` - Description for the todo (required for add)
-- `-i, --id` - ID of the todo (required for remove and complete)
-- `-h, --help` - Display help information
-
-### Examples
-
-Add a new todo:
-```sh
-./todo add -t "Buy milk" -d "Get 2 liters of milk"
+### Mark a todo as completed
+```bash
+todo complete -i 1
 ```
 
-List all todos:
-```sh
-./todo list
+### Remove a todo
+```bash
+todo remove -i 1
 ```
 
-Complete a todo:
-```sh
-./todo complete -i 1
+### Get help
+```bash
+todo --help
 ```
 
-Remove a todo:
-```sh
-./todo remove -i 2
+## Data Storage
+
+Todos are automatically stored in a SQLite database located at `~/.todo/todos.db`. The application handles all database operations transparently, so you don't need to worry about database management.
+
+## Development
+
+### Prerequisites
+
+- Go 1.21 or later
+- Make (optional, for easier building)
+
+### Building from source
+
+```bash
+make build
 ```
 
-Display help:
-```sh
-./todo -h
+### Running tests
+
+```bash
+make test
 ```
 
-## Next Improvements
+## License
 
-- Use a CLI library like [cobra](https://github.com/spf13/cobra) for better UX
-- Add edit and search features
-- Add unit tests
-- Improve error handling
-- Add binary release for different platforms and make it available through Homebrew, Winget and Apt
-- Add due dates and priority levels for todos
-- Implement categories/tags for better organization
-- Add data export/import functionality
+MIT License
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
