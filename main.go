@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -96,13 +97,41 @@ func removeTodo(db *sql.DB, id int) error {
 }
 
 var (
-	action      = flag.String("action", "add", "action (add, remove, list, complete)")
-	title       = flag.String("title", "", "title of the todo")
-	description = flag.String("description", "", "description of the todo")
-	id          = flag.Int("id", 0, "ID of the todo to be actioned upon. Used for remove and complete")
+	title       = flag.String("title", "", "Title of the todo item")
+	description = flag.String("description", "", "Description of the todo item")
+	id          = flag.Int("id", 0, "ID of the todo item to remove or mark as complete")
 )
 
+func init() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Todo CLI - A simple todo list manager\n\n")
+		fmt.Fprintf(os.Stderr, "Usage:\n  %s [action] [flags]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Actions:\n")
+		fmt.Fprintf(os.Stderr, "  add         Add a new todo item\n")
+		fmt.Fprintf(os.Stderr, "  remove      Remove a todo item\n")
+		fmt.Fprintf(os.Stderr, "  complete    Mark a todo item as completed\n")
+		fmt.Fprintf(os.Stderr, "  list        List all todo items\n\n")
+		fmt.Fprintf(os.Stderr, "Flags:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nExamples:\n")
+		fmt.Fprintf(os.Stderr, "  %s add -t \"Meeting\" -d \"Team standup at 10AM\"\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s complete -i 1\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s remove -i 2\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s list\n", os.Args[0])
+	}
+
+	flag.StringVar(title, "t", "", "shorthand for --title")
+	flag.StringVar(description, "d", "", "shorthand for --description")
+	flag.IntVar(id, "i", 0, "shorthand for --id")
+}
+
 func main() {
+	// Check for help flag before any other operations
+	if len(os.Args) > 1 && (os.Args[1] == "-h" || os.Args[1] == "--help") {
+		flag.Usage()
+		os.Exit(0)
+	}
+
 	db, err := sql.Open("sqlite3", "./todos.db")
 	if err != nil {
 		log.Fatal(err)
@@ -114,8 +143,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if len(os.Args) < 2 {
+		flag.Usage()
+		os.Exit(1)
+	}
+	action := os.Args[1]
+	os.Args = os.Args[1:]
 	flag.Parse()
-	switch *action {
+	switch action {
 	case "add":
 		handleAdd(db)
 	case "remove":
