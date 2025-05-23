@@ -9,6 +9,7 @@ A simple command-line Todo application written in Go. Todos are stored in a SQLi
 - Mark todos as completed
 - Remove todos by ID
 - Data is persisted in SQLite database
+- User-friendly command-line interface with action commands
 
 ## Dependencies
 
@@ -23,44 +24,52 @@ Build the app:
 go build -o todo
 ```
 
-### Add a Todo
+### Command Structure
+
+The app uses a command-based interface where the action comes first, followed by flags:
 
 ```sh
-./todo -action=add -title="Buy milk" -description="Get 2 liters of milk"
+./todo [action] [flags]
 ```
 
-### List Todos
+Available actions:
+- `add` - Add a new todo item
+- `remove` - Remove a todo item
+- `complete` - Mark a todo item as completed
+- `list` - List all todo items
 
+### Flags
+
+- `-t, --title` - Title for the todo (required for add)
+- `-d, --description` - Description for the todo (required for add)
+- `-i, --id` - ID of the todo (required for remove and complete)
+- `-h, --help` - Display help information
+
+### Examples
+
+Add a new todo:
 ```sh
-./todo -action=list
+./todo add -t "Buy milk" -d "Get 2 liters of milk"
 ```
 
-### Complete a Todo
-
+List all todos:
 ```sh
-./todo -action=complete -id=1
+./todo list
 ```
 
-### Remove a Todo
-
+Complete a todo:
 ```sh
-./todo -action=remove -id=1
+./todo complete -i 1
 ```
 
-## Flags
-
-- `-action` (add, remove, list, complete) — What you want to do
-- `-title` — Title for the todo (required for add)
-- `-description` — Description for the todo (required for add)
-- `-id` — ID of the todo (required for remove and complete)
-
-## Example
-
+Remove a todo:
 ```sh
-./todo -action=add -title="Read Go book" -description="Finish chapter 3"
-./todo -action=list
-./todo -action=complete -id=1
-./todo -action=remove -id=1
+./todo remove -i 2
+```
+
+Display help:
+```sh
+./todo -h
 ```
 
 ## Next Improvements
@@ -70,3 +79,6 @@ go build -o todo
 - Add unit tests
 - Improve error handling
 - Add binary release for different platforms and make it available through Homebrew, Winget and Apt
+- Add due dates and priority levels for todos
+- Implement categories/tags for better organization
+- Add data export/import functionality
