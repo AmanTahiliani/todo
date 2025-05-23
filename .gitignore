@@ -23,3 +23,9 @@ todos.json
 
 # Test cache
 *.test
+
+# Log files
+*.log
+
+# DB files
+*.db
