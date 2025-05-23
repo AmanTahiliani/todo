@@ -26,6 +26,20 @@ builds:
       - amd64
       - arm64
 
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - 'README'
+      - Merge pull request
+      - Merge branch
+
 archives:
   - formats: [tar.gz]
     # this name template makes the OS and Arch compatible with the results of `uname`.
@@ -41,12 +55,6 @@ archives:
       - goos: windows
         formats: [zip]
 
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
 brews:
   -
     name: todo
@@ -59,10 +67,13 @@ brews:
     commit_author:
       name: AmanTahiliani
       email: amantahiliani7437@gmail.com
-      
+  
+snapshot:
+    name_template: '{{ .Tag }}-next'
+
+
 release:
-  footer: >-
+  prerelease: auto
 
-    ---
-
-    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+universal_binaries:
+  - replace: true
